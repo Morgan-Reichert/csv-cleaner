@@ -137,7 +137,11 @@ export function Diagnostic({
         <div className="panneau-titre">
           <h3>Corrections appliquées</h3>
           {peutAnnuler && (
-            <button className="bouton-secondaire petit" onClick={onAnnuler}>
+            <button
+              className="bouton-secondaire petit"
+              onClick={onAnnuler}
+              title="Annuler la dernière correction (Ctrl+Z)"
+            >
               <IconeAnnuler taille={14} />
               Annuler
             </button>

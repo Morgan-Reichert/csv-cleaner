@@ -10,6 +10,7 @@ type Props = {
   nomFichier: string
   separateurEntree: string
   problemesRestants: number
+  onNotifier: (texte: string) => void
 }
 
 type Reglage = {
@@ -70,6 +71,7 @@ export function Export({
   nomFichier,
   separateurEntree,
   problemesRestants,
+  onNotifier,
 }: Props) {
   const [profil, setProfil] = useState<Profil>('excel')
   const [perso, setPerso] = useState<Reglage>({
@@ -92,19 +94,15 @@ export function Export({
       finDeLigne: reglage.finDeLigne,
       guillemets: reglage.guillemets,
     })
-    telecharger(
-      encoder(texte, reglage.encodage),
-      `${baseNom(nomFichier)}-propre.csv`,
-      'text/csv;charset=utf-8',
-    )
+    const nom = `${baseNom(nomFichier)}-propre.csv`
+    telecharger(encoder(texte, reglage.encodage), nom, 'text/csv;charset=utf-8')
+    onNotifier(`${nom} téléchargé · ${tableSortie.lignes.length.toLocaleString('fr-FR')} lignes`)
   }
 
   const exporterJson = () => {
-    telecharger(
-      new TextEncoder().encode(serialiserJson(tableSortie)),
-      `${baseNom(nomFichier)}.json`,
-      'application/json',
-    )
+    const nom = `${baseNom(nomFichier)}.json`
+    telecharger(new TextEncoder().encode(serialiserJson(tableSortie)), nom, 'application/json')
+    onNotifier(`${nom} téléchargé`)
   }
 
   return (

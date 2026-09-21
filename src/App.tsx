@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { detecterSeparateur, nomSeparateur, parserCsv, SEPARATEURS, type Table } from './lib/csv'
 import { decoder } from './lib/encodage'
 import { analyser, statistiques, type Probleme } from './lib/diagnostic'
@@ -20,7 +20,9 @@ import {
   IconeAlerte,
   IconeBalai,
   IconeCadenas,
+  IconeCheckCercle,
   IconeCroix,
+  IconeDepot,
   IconeFichier,
   IconeGraphique,
   IconeLune,
@@ -71,6 +73,15 @@ export function App() {
   const [sombre, setSombre] = useState(
     () => document.documentElement.getAttribute('data-theme') === 'sombre',
   )
+  const [toast, setToast] = useState<string | null>(null)
+  const [glisser, setGlisser] = useState(false)
+  const minuteurToast = useRef<number | undefined>(undefined)
+
+  const notifier = useCallback((texte: string) => {
+    setToast(texte)
+    window.clearTimeout(minuteurToast.current)
+    minuteurToast.current = window.setTimeout(() => setToast(null), 2800)
+  }, [])
 
   const table = historique.length > 0 ? historique[historique.length - 1] : null
 
@@ -151,16 +162,25 @@ export function App() {
     )
   }, [charger])
 
-  const pousser = useCallback((t: Table, texte: string, nombre: number) => {
-    setHistorique((h) => [...h, t])
-    setJournal((j) => [...j, { texte, nombre }])
-  }, [])
+  const pousser = useCallback(
+    (t: Table, texte: string, nombre: number, message?: string) => {
+      setHistorique((h) => [...h, t])
+      setJournal((j) => [...j, { texte, nombre }])
+      notifier(message ?? texte)
+    },
+    [notifier],
+  )
 
   const appliquer = useCallback(
     (p: Probleme) => {
       if (!table) return
       const { table: suivante, nombre } = p.corriger(table)
-      pousser(suivante, p.titre, nombre)
+      pousser(
+        suivante,
+        p.titre,
+        nombre,
+        `${p.titre} · ${nombre.toLocaleString('fr-FR')} ${p.unite}${nombre > 1 ? 's' : ''}`,
+      )
       setProblemeActif(null)
     },
     [table, pousser],
@@ -187,14 +207,33 @@ export function App() {
     setHistorique((h) => [...h, courante])
     setJournal((j) => [...j, ...entrees])
     setProblemeActif(null)
-  }, [table, formatDate])
+    const total = entrees.reduce((n, e) => n + e.nombre, 0)
+    notifier(
+      `${entrees.length} problème${entrees.length > 1 ? 's' : ''} corrigé${entrees.length > 1 ? 's' : ''} — ${total.toLocaleString('fr-FR')} valeurs touchées`,
+    )
+  }, [table, formatDate, notifier])
 
   const annuler = useCallback(() => {
     if (historique.length <= 1) return
+    const derniere = journal[journal.length - 1]
     setHistorique((h) => h.slice(0, -1))
     setJournal((j) => j.slice(0, -1))
     setProblemeActif(null)
-  }, [historique.length])
+    notifier(derniere ? `Annulé : ${derniere.texte.toLowerCase()}` : 'Correction annulée')
+  }, [historique.length, journal, notifier])
+
+  // Ctrl+Z / Cmd+Z annule la dernière correction, sauf pendant une saisie.
+  useEffect(() => {
+    const auClavier = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+      const cible = e.target as HTMLElement | null
+      if (cible && /^(INPUT|TEXTAREA|SELECT)$/.test(cible.tagName)) return
+      e.preventDefault()
+      annuler()
+    }
+    document.addEventListener('keydown', auClavier)
+    return () => document.removeEventListener('keydown', auClavier)
+  }, [annuler])
 
   const renommerColonne = useCallback(
     (col: number, nom: string) => {
@@ -265,8 +304,34 @@ export function App() {
 
   const probleme = problemes.find((p) => p.id === problemeActif) ?? null
 
+  // Un fichier peut être déposé n'importe où sur la page, pas seulement sur l'accueil.
+  const surGlisse = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setGlisser(true)
+  }
+
+  const surDepot = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setGlisser(false)
+    const fichier = e.dataTransfer.files[0]
+    if (!fichier) return
+    if (journal.length > 0 && !confirm('Remplacer le fichier en cours ? Les corrections seront perdues.'))
+      return
+    ouvrirFichier(fichier)
+  }
+
   return (
-    <div className="app">
+    <div
+      className="app"
+      onDragOver={surGlisse}
+      onDragEnter={surGlisse}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setGlisser(false)
+      }}
+      onDrop={surDepot}
+    >
       <header className="entete">
         <LogoSignature hauteur={28} />
         <div className="entete-droite">
@@ -310,6 +375,28 @@ export function App() {
                 </span>
               </div>
             </div>
+
+            <button
+              className={`etat-fichier ${problemes.length === 0 ? 'propre' : ''}`}
+              onClick={() => setOnglet('nettoyage')}
+              title={
+                problemes.length === 0
+                  ? 'Aucun problème détecté'
+                  : 'Voir les problèmes détectés'
+              }
+            >
+              {problemes.length === 0 ? (
+                <>
+                  <IconeCheckCercle taille={15} />
+                  Fichier propre
+                </>
+              ) : (
+                <>
+                  <IconeAlerte taille={15} />
+                  {problemes.length} problème{problemes.length > 1 ? 's' : ''}
+                </>
+              )}
+            </button>
             <label className="case">
               <input
                 type="checkbox"
@@ -413,6 +500,7 @@ export function App() {
                 nomFichier={info.nom}
                 separateurEntree={info.separateur}
                 problemesRestants={problemes.length}
+                onNotifier={notifier}
               />
             </section>
           </div>
@@ -439,6 +527,23 @@ export function App() {
       </footer>
 
       {legalOuvert && <Legal onFermer={() => setLegalOuvert(false)} />}
+
+      {toast && (
+        <div className="toast" role="status">
+          <IconeCheckCercle taille={17} />
+          {toast}
+        </div>
+      )}
+
+      {glisser && (
+        <div className="voile-depot">
+          <div className="voile-depot-carte">
+            <IconeDepot taille={34} />
+            <strong>Déposez le fichier</strong>
+            <span>il sera lu par votre navigateur, sans être envoyé</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

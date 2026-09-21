@@ -1195,3 +1195,120 @@ table.donnees tbody tr:hover td {
   color: var(--texte-doux);
   max-width: 54ch;
 }
+
+/* ------------------------------ état du fichier ---------------------------- */
+
+.etat-fichier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ambre-doux);
+  color: var(--ambre);
+  border: 1px solid color-mix(in srgb, var(--ambre) 32%, transparent);
+  border-radius: 999px;
+  padding: 4px 13px;
+  font-size: 12.5px;
+  font-weight: 640;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.etat-fichier.propre {
+  background: var(--vert-doux);
+  color: var(--vert-lisible);
+  border-color: color-mix(in srgb, var(--vert) 32%, transparent);
+}
+
+.etat-fichier:hover {
+  background: color-mix(in srgb, currentColor 12%, var(--surface));
+}
+
+/* --------------------------------- messages -------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: calc(100vw - 40px);
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--texte);
+  color: var(--surface);
+  font-size: 13.5px;
+  font-weight: 560;
+  box-shadow: 0 8px 24px rgba(8, 11, 18, 0.22);
+  transform: translate(-50%, 0);
+  animation: monter 0.18s ease-out;
+}
+
+.toast svg {
+  color: var(--vert);
+  flex: none;
+}
+
+@keyframes monter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ------------------------------ dépôt n'importe où -------------------------- */
+
+.voile-depot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--fond) 82%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.voile-depot-carte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 44px 56px;
+  text-align: center;
+  background: var(--surface);
+  border: 2px dashed var(--vert);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(8, 11, 18, 0.18);
+}
+
+.voile-depot-carte svg {
+  color: var(--vert);
+  margin-bottom: 4px;
+}
+
+.voile-depot-carte strong {
+  font-size: 18px;
+}
+
+.voile-depot-carte span {
+  font-size: 13px;
+  color: var(--texte-doux);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .tourne {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
